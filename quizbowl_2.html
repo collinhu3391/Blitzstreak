@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blitzbeep</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0305;
+    --surface: #130608;
+    --surface2: #1c080b;
+    --border: #3d1215;
+    --accent: #c0001a;
+    --accent-bright: #e8001f;
+    --accent2: #8b0000;
+    --accent3: #ff3347;
+    --text: #f0e8e8;
+    --muted: #7a4a4e;
+    --correct: #00e676;
+    --wrong: #ff2233;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* Curtain background */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background-color: #0d0305;
+    background-image:
+      repeating-linear-gradient(
+        90deg,
+        transparent 0px,
+        transparent 18px,
+        rgba(120,0,15,0.18) 18px,
+        rgba(120,0,15,0.18) 20px,
+        transparent 20px,
+        transparent 38px,
+        rgba(80,0,8,0.12) 38px,
+        rgba(80,0,8,0.12) 40px
+      ),
+      repeating-linear-gradient(
+        180deg,
+        transparent 0px,
+        rgba(0,0,0,0.08) 3px,
+        transparent 6px,
+        transparent 20px
+      );
+    background-size: 40px 100%, 100% 20px;
+  }
+
+  /* Curtain sheen */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 100% at 20% 50%, rgba(160,0,20,0.07) 0%, transparent 70%),
+      radial-gradient(ellipse 60% 100% at 80% 50%, rgba(160,0,20,0.07) 0%, transparent 70%),
+      radial-gradient(ellipse 100% 30% at 50% 0%, rgba(200,0,20,0.06) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .header {
+    border-bottom: 1px solid var(--border);
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: rgba(13,3,5,0.96);
+    backdrop-filter: blur(12px);
+    z-index: 101;
+  }
+
+  .logo {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 28px;
+    letter-spacing: 4px;
+    color: var(--accent);
+    text-shadow: 0 0 20px rgba(192,0,26,0.6);
+  }
+
+  .header-stats {
+    display: flex;
+    gap: 24px;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+  }
+
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .stat-label { color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .stat-value { font-size: 20px; font-weight: 700; color: var(--accent); }
+  .stat-value.wrong-color { color: var(--wrong); }
+
+  .main {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Packet/question selector */
+  .selector-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+  }
+
+  .selector-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    min-width: 140px;
+  }
+
+  .selector-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--muted);
+  }
+
+  select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 14px;
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%236b6b8a' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+  }
+
+  select:hover, select:focus { border-color: var(--accent); outline: none; }
+
+  /* Question card */
+  .question-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 24px;
+    position: relative;
+  }
+
+  .question-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent3));
+  }
+
+  .question-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+
+  .question-id {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+
+  .question-num {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 22px;
+    color: var(--accent);
+    letter-spacing: 2px;
+  }
+
+  .question-body {
+    padding: 28px 24px;
+    font-size: 17px;
+    line-height: 1.75;
+    font-weight: 300;
+    letter-spacing: 0.01em;
+  }
+
+  /* Reading animation */
+  .word {
+    display: inline;
+    transition: opacity 0.1s;
+  }
+
+  .word.revealed { opacity: 1; }
+  .word.hidden { opacity: 0.08; }
+  .word.current {
+    opacity: 1;
+    background: rgba(192,0,26,0.2);
+    border-radius: 2px;
+    padding: 0 2px;
+    margin: 0 -2px;
+  }
+
+  /* Controls */
+  .controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .btn {
+    padding: 14px 20px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .btn:hover { background: var(--surface2); border-color: var(--muted); }
+  .btn:active { transform: scale(0.98); }
+
+  .btn-buzz {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    font-weight: 700;
+    font-size: 14px;
+    grid-column: 1 / -1;
+    padding: 18px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-buzz::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,0.2);
+    transform: translateX(-100%);
+    transition: transform 0.3s;
+  }
+
+  .btn-buzz:hover::before { transform: translateX(0); }
+  .btn-buzz:hover { background: #a50017; border-color: #a50017; box-shadow: 0 0 30px rgba(192,0,26,0.5); }
+
+  .btn-buzz.buzzed {
+    background: var(--accent2);
+    border-color: var(--accent2);
+    color: #fff;
+    animation: buzzPulse 0.3s ease;
+  }
+
+  @keyframes buzzPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+  }
+
+  .btn-play { color: var(--accent3); border-color: rgba(192,0,26,0.3); }
+  .btn-play:hover { background: rgba(192,0,26,0.1); }
+
+  /* Speed control */
+  .speed-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+  }
+
+  .speed-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 2px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    background: var(--accent);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(192,0,26,0.6);
+  }
+
+  .speed-val {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    min-width: 40px;
+    text-align: right;
+  }
+
+  /* Buzz / answer panel */
+  .answer-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 24px;
+    display: none;
+  }
+
+  .answer-panel.visible { display: block; }
+
+  .answer-panel-header {
+    padding: 12px 20px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--muted);
+  }
+
+  .answer-input-row {
+    display: flex;
+    gap: 0;
+  }
+
+  .answer-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 16px;
+    padding: 18px 20px;
+    outline: none;
+    letter-spacing: 1px;
+  }
+
+  .answer-input::placeholder { color: var(--muted); }
+
+  .btn-submit {
+    background: var(--accent);
+    border: none;
+    color: #000;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    padding: 18px 24px;
+    cursor: pointer;
+    font-weight: 700;
+    transition: background 0.15s;
+  }
+
+  .btn-submit:hover { background: #a50017; }
+
+  /* Result display */
+  .result-panel {
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 24px;
+    display: none;
+  }
+
+  .result-panel.visible { display: block; }
+
+  .result-inner {
+    padding: 20px 24px;
+    border: 1px solid;
+    border-radius: 8px;
+  }
+
+  .result-inner.correct {
+    background: rgba(0,230,118,0.08);
+    border-color: rgba(0,230,118,0.3);
+  }
+
+  .result-inner.wrong {
+    background: rgba(255,71,87,0.08);
+    border-color: rgba(255,71,87,0.3);
+  }
+
+  .result-badge {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 28px;
+    letter-spacing: 3px;
+    margin-bottom: 8px;
+  }
+
+  .result-inner.correct .result-badge { color: var(--correct); }
+  .result-inner.wrong .result-badge { color: var(--wrong); }
+
+  .result-answer-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .result-answer-text {
+    font-size: 16px;
+    line-height: 1.6;
+    font-style: italic;
+    color: var(--text);
+  }
+
+  .result-your-answer {
+    margin-top: 8px;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  /* Navigation */
+  .nav-row {
+    display: flex;
+    gap: 12px;
+  }
+
+  .btn-nav {
+    flex: 1;
+    padding: 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.15s;
+  }
+
+  .btn-nav:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Progress bar */
+  .progress-container {
+    height: 2px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-bottom: 28px;
+    overflow: hidden;
+  }
+
+  .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent3));
+    transition: width 0.3s ease;
+  }
+
+  /* Reading indicator */
+  .reading-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 20px;
+  }
+
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--muted);
+  }
+
+  .dot.reading {
+    background: var(--accent);
+    animation: pulse 1s infinite;
+    box-shadow: 0 0 8px rgba(192,0,26,0.8);
+  }
+
+  .dot.buzzed { background: var(--accent2); animation: none; }
+  .dot.done { background: var(--correct); animation: none; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(0.8); }
+  }
+
+  /* Keyboard hint */
+  .kbd-hints {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 32px;
+  }
+
+  .kbd-hint {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  kbd {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 2px 6px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text);
+  }
+
+  /* Score history */
+  .history-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-top: 32px;
+  }
+
+  .history-header {
+    padding: 14px 20px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .history-clear {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    padding: 4px 8px;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all 0.15s;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .history-clear:hover { border-color: var(--wrong); color: var(--wrong); }
+
+  .history-list {
+    max-height: 280px;
+    overflow-y: auto;
+  }
+
+  .history-item {
+    display: grid;
+    grid-template-columns: 60px 1fr auto;
+    gap: 12px;
+    align-items: center;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    transition: background 0.15s;
+  }
+
+  .history-item:hover { background: var(--surface2); }
+  .history-item:last-child { border-bottom: none; }
+
+  .history-qid {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .history-q { 
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .history-result {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .history-result.c { color: var(--correct); }
+  .history-result.w { color: var(--wrong); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--surface); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  .empty-history {
+    padding: 32px 20px;
+    text-align: center;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo">Blitzbeep</div>
+  <div class="header-stats">
+    <div class="stat-item">
+      <span class="stat-label">Correct</span>
+      <span class="stat-value" id="scoreCorrect">0</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">Wrong</span>
+      <span class="stat-value wrong-color" id="scoreWrong">0</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">Pct</span>
+      <span class="stat-value" id="scorePct">—</span>
+    </div>
+  </div>
+</header>
+
+<main class="main">
+  <div class="selector-row">
+    <div class="selector-group" id="packetSelectorGroup">
+      <span class="selector-label">Packet</span>
+      <select id="packetSelect"></select>
+    </div>
+    <div class="selector-group">
+      <span class="selector-label">Question</span>
+      <select id="questionSelect"></select>
+    </div>
+  </div>
+
+  <div class="progress-container">
+    <div class="progress-bar" id="progressBar"></div>
+  </div>
+
+  <div class="reading-status">
+    <div class="dot" id="statusDot"></div>
+    <span id="statusText">Ready</span>
+  </div>
+
+  <div class="kbd-hints">
+    <div class="kbd-hint"><kbd>Space</kbd> Buzz in</div>
+    <div class="kbd-hint"><kbd>Enter</kbd> Play / Submit</div>
+    <div class="kbd-hint"><kbd>→</kbd> Next question</div>
+    <div class="kbd-hint"><kbd>↓</kbd> Next + autoplay</div>
+    <div class="kbd-hint"><kbd>←</kbd> Previous</div>
+    <div class="kbd-hint"><kbd>R</kbd> Restart</div>
+    <div class="kbd-hint"><kbd>T</kbd> Toggle TTS</div>
+  </div>
+
+  <div class="question-card" id="questionCard">
+    <div class="question-meta">
+      <span class="question-id" id="questionIdLabel">P1 · Q1</span>
+      <span class="question-num" id="questionNumLabel">#1</span>
+    </div>
+    <div class="question-body" id="questionBody">
+      Select a packet and press Play to begin.
+    </div>
+  </div>
+
+  <div class="speed-row">
+    <span class="speed-label">Read Speed</span>
+    <input type="range" id="speedSlider" min="60" max="400" value="200">
+    <span class="speed-val" id="speedVal">200 wpm</span>
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-play" id="btnPlay" onclick="playQuestion()">▶ Play</button>
+    <button class="btn" id="btnReveal" onclick="revealAnswer()">👁 Reveal</button>
+    <button class="btn" id="btnTTS" style="color:var(--muted)">🔇 TTS OFF</button>
+    <button class="btn btn-buzz" id="btnBuzz" onclick="buzzIn()">⚡ BUZZ IN</button>
+  </div>
+
+  <div class="answer-panel" id="answerPanel">
+    <div class="answer-panel-header">Your Answer</div>
+    <div class="answer-input-row">
+      <input type="text" class="answer-input" id="answerInput" placeholder="Type your answer..." autocomplete="off" autocorrect="off" spellcheck="false">
+      <button class="btn-submit" onclick="submitAnswer()">Submit</button>
+    </div>
+  </div>
+
+  <div class="result-panel" id="resultPanel">
+    <div class="result-inner" id="resultInner">
+      <div class="result-badge" id="resultBadge">CORRECT!</div>
+      <div class="result-answer-label">Accepted Answer</div>
+      <div class="result-answer-text" id="resultAnswerText"></div>
+      <div class="result-your-answer" id="resultYourAnswer"></div>
+    </div>
+  </div>
+
+  <div class="nav-row">
+    <button class="btn-nav" onclick="prevQuestion()">← Previous</button>
+    <button class="btn-nav" onclick="nextQuestion()">Next →</button>
+  </div>
+
+  <div class="history-panel">
+    <div class="history-header">
+      <span>Recent Results</span>
+      <button class="history-clear" onclick="clearHistory()">Clear</button>
+    </div>
+    <div class="history-list" id="historyList">
+      <div class="empty-history">No results yet</div>
+    </div>
+  </div>
+</main>
+
+<script>
+const DATA = [{"packet":1,"questions":[{"number":1,"question":"What author of Grimus and Fury wrote about Saleem Sinai in Midnight's Children, and was the subject of a fatwa after publishing The Satanic Verses?","answer":"(Ahmed) Salman Rushdie"},{"number":2,"question":"What mathematician proved the theorema egregium on curvature, and is the namesake of two of Maxwell's equations as well as the normal distribution?","answer":"(Johann) Carl Friedrich Gauss"},{"number":3,"question":"What island, whose ancient city of Knossos was part of the Minoan civilization, is home to Heraklion and is the most populous of the Greek islands?","answer":"Crete (or Kriti or Krete)"},{"number":4,"question":"What events, which are commemorated by parades around June 28, followed a raid on a Greenwich Village inn, and were a group of pro-LGBT riots in 1969?","answer":"Stonewall riots (accept Stonewall uprising or Stonewall rebellion)"},{"number":5,"question":"James Galway and Jean-Pierre Rampal played what \"transverse\" woodwind instrument which lacks a reed and is a larger relative of the piccolo?","answer":"(transverse) flute"},{"number":6,"question":"Ralph Goodale is a minister from what party, known as \"the Grits,\" that won a majority in 2015 and installed Justin Trudeau as Prime Minister of Canada?","answer":"Liberal Party of Canada (or Liberals; accept the Grits before Grits)"},{"number":7,"question":"What man, who was named military governor of Tennessee in 1862, succeeded Hannibal Hamlin as vice president and Abraham Lincoln as president?","answer":"Andrew Johnson (prompt on \"Johnson\")"},{"number":8,"question":"Thiol groups contain what group 16 element that is used in vulcanization and forms a binary compound with hydrogen that has the smell of rotting eggs?","answer":"sulfur (or S or sulphur)"},{"number":9,"question":"What singer included the songs \"Homemade Dynamite\" and \"Liability\" on her 2017 sophomore album Melodrama, which begins with the hit single \"Green Light\"?","answer":"Lorde (or Ella Marija Lani Yelich-O'Connor; prompt on \"Yelich\" or \"O'Connor\")"},{"number":10,"question":"What author declared, \"I will arise and go now\" in his poem \"The Lake Isle of Innisfree,\" and commented on a failed Irish rebellion in \"Easter, 1916\"?","answer":"William Butler Yeats"},{"number":11,"question":"Democratic congresswoman Chellie Pingree and Republican senator Susan Collins represent what state, which is governed by Paul LePage from Augusta?","answer":"Maine"},{"number":12,"question":"Pencil and paper ready. Two answers required. What two positive integers have a sum of 82 and a difference of 24?","answer":"29 and 53 (accept in either order)"},{"number":13,"question":"What author, who asked \"I wonder if it's that simple?\" in his poem \"Theme for English B,\" also wrote \"The Weary Blues\" during the Harlem Renaissance?","answer":"Langston Hughes (or James Mercer Langston Hughes)"},{"number":14,"question":"During what century did the U.S. fight the Barbary Wars against North African states, the Mexican-American War, and the Spanish-American War?","answer":"19th century (or 1800s)"},{"number":15,"question":"The British doctor John Snow studied the spread of what disease, caused by Vibrio bacteria, whose sufferers experience severe \"rice-water\" diarrhea?","answer":"cholera"},{"number":16,"question":"What lake, which receives the Selenga River, is partially in the Irkutsk Oblast, is the world's deepest lake and is found in eastern Siberia?","answer":"Lake Baikal (or Ozero Baikal)"},{"number":17,"question":"In June 2017 Otto Warmbier died after a prison term in what country, where he was accused of stealing a propaganda poster depicting Kim Jong-Il?","answer":"North Korea (or Democratic People's Republic of Korea or DPRK)"},{"number":18,"question":"What man purged his country's New People starting in Year Zero and created \"Killing Fields\" as the totalitarian leader of the Khmer Rouge in Cambodia?","answer":"Pol Pot (or Saloth Sar)"},{"number":19,"question":"What region, whose upper border is formed by the Moho discontinuity, contains most of the Earth's volume and is found between the core and the crust?","answer":"Earth's mantle"},{"number":20,"question":"What book, whose chapter \"A Fable for Tomorrow\" depicts a town where all the animals die, details the effects of pesticides and is by Rachel Carson?","answer":"Silent Spring"},{"number":21,"question":"What strait contains the Diomede Islands, crosses the International Date Line, is named for a Danish explorer, and separates the U.S. and Russia?","answer":"Bering Strait (or Beringov proliv)"},{"number":22,"question":"What civilization used messengers called chasquis to carry quipu messages across its Andean empire, which was conquered by Francisco Pizarro?","answer":"Incan empire (or Inca civilization or Incas or Tawantinsuyu)"},{"number":23,"question":"What technique, in which compounds like bromothymol blue and phenolphthalein are used as indicators, is used to determine an analyte's concentration?","answer":"titration (or volumetric analysis or titrimetry)"},{"number":24,"question":"What author depicted an enormous cylindrical spaceship in Rendezvous with Rama and created the malevolent computer HAL 9000 in 2001: A Space Odyssey?","answer":"Arthur C. Clarke (or Sir Arthur Charles Clarke)"},{"number":25,"question":"The Comnenus and Empress Zoe mosaics are found in what former Orthodox church completed in 537 under the orders of Justinian in Constantinople?","answer":"Hagia Sophia (or Sancta Sophia or Ayasofya)"},{"number":26,"question":"Pencil and paper ready. What is the volume of a right circular cone whose base has a radius of 3 and whose height is 4?","answer":"12 pi"},{"number":27,"question":"The play I am a Camera inspired what musical, in which \"Maybe This Time\" is sung by Sally Bowles, who works with an emcee at Berlin's Kit Kat Club?","answer":"Cabaret"},{"number":28,"question":"What target of the papal bull Exsurge Domine was declared a \"notorious heretic\" at the Diet of Worms, where he defended writing his 95 Theses?","answer":"Martin Luther"},{"number":29,"question":"What circuit component, an early example of which was the Leyden jar, has a strength measured in farads and stores charge on parallel plates?","answer":"capacitor(s) (accept condenser(s))"},{"number":30,"question":"What author, whose Pulitzer Prize-winning plays include Three Tall Women, wrote about an awkward faculty party in Who's Afraid of Virginia Woolf?","answer":"Edward Albee (or Edward Franklin Albee III)"},{"number":31,"question":"What name is shared by an author of a harsh Athenian law code and a constellation in the northern night sky named for the Latin for \"dragon\"?","answer":"Draco (or Drakon)"},{"number":32,"question":"What woman spends three years weaving and un-weaving a burial shroud for her father-in-law Laertes as she waits in Ithaca for her husband Odysseus?","answer":"Penelope"},{"number":33,"question":"What law, which is only valid for a linear elastic material, states that the distance a spring extends is proportional to the force applied to it?","answer":"Hooke's law"},{"number":34,"question":"\"Treif\" is the opposite of what designation, which can be \"pareve,\" excludes mixtures of meat and dairy, and refers to foods permitted in Jewish law?","answer":"kosher (or kashrut)"},{"number":35,"question":"Who negotiated the Treaty of Brest-Litovsk as Soviet Foreign Minister and then founded the Red Army before being murdered in Mexico City in 1940?","answer":"Leon Trotsky (or Lev Davidovich Bronshtein)"},{"number":36,"question":"What object that depicts a \"mysterious priest\" leading a heifer to a sacrificial altar is called an \"unravish'd bride of quietness\" in a John Keats ode?","answer":"Grecian urn (accept Ode on a Grecian Urn)"},{"number":37,"question":"Kudzu, snakehead fish, and zebra mussels are examples of what types of species that are introduced to a region and cause damage to its ecosystem?","answer":"invasive species"},{"number":38,"question":"What state, in which the Garrison Dam is near Minot, is home to the oil-rich Bakken Formation and includes the cities of Fargo and Bismarck?","answer":"North Dakota"},{"number":39,"question":"What character, who lives for a time in the Petit-Picpus convent with his adopted daughter Cosette, is hounded by Inspector Javert in Les Misérables?","answer":"Jean Valjean"},{"number":40,"question":"What regnal name was used by the English king nicknamed Longshanks and the British king who married Wallis Warfield Simpson after abdicating in 1936?","answer":"Edward (accept Edward I or Edward Longshanks or Edward VIII)"}]},{"packet":2,"questions":[{"number":1,"question":"Euclid's algorithm calculates what property of two numbers, which is 1 if they are relatively prime, and is \"canceled\" when reducing fractions?","answer":"greatest common divisor or GCD (or greatest common factor or GCF)"},{"number":2,"question":"What artist, whose tomb for Pope Julius II features his Horned Moses, showed Mary cradling the dead Christ in a marble Pietà in St. Peter's Basilica?","answer":"Michelangelo (or Michelangelo di Lodovico Buonarroti Simoni)"},{"number":3,"question":"What author wrote about a person who lives hundreds of years after changing sexes in Orlando, and depicted Clarissa's dinner party in Mrs. Dalloway?","answer":"(Adeline) Virginia Woolf (or Adeline Virginia Stephen)"},{"number":4,"question":"What work, in which Thrasymachus calls justice \"the interest of the stronger,\" depicts a city-state run by philosopher-kings and is a dialogue by Plato?","answer":"The Republic (or Politeia)"},{"number":5,"question":"Pencil and paper ready. What single-digit positive integer is both congruent to the expression 13 modulo 7, and is the degree of a hexic polynomial?","answer":"6"},{"number":6,"question":"What book, in which Dictionopolis is visited by Milo and the clock-bearing dog Tock, is named for a magical transit device and is by Norton Juster?","answer":"The Phantom Tollbooth"},{"number":7,"question":"What musician, whose album Low was part of his \"Berlin Trilogy,\" collaborated with Queen on \"Under Pressure\" and sang about Major Tom in \"Space Oddity\"?","answer":"David Bowie (or David Robert Jones)"},{"number":8,"question":"What state, which is home to the Kisatchie National Forest, also includes a park named for Jean Lafitte and the cities of Shreveport and Baton Rouge?","answer":"Louisiana"},{"number":9,"question":"What leader, emboldened by the Satcho Alliance, declared the Charter Oath to launch a namesake \"restoration\" replacing the Tokugawa Shogunate?","answer":"Meiji (or Mutsuhito; accept Meiji Restoration)"},{"number":10,"question":"What animals have a \"Grévy's\" species that is less social and larger than the \"plains\" species and has a narrower pattern of black and white stripes?","answer":"zebra(s) (or Equus zebra)"},{"number":11,"question":"What man, whose father Charles was prosecuted for tax evasion by Chris Christie in 2004, is an adviser to Donald Trump, who is also his father-in-law?","answer":"Jared (Corey) Kushner"},{"number":12,"question":"Robert Stroud was called the \"Birdman\" of what facility that also once housed Al Capone, a federal prison on an island in San Francisco Bay?","answer":"Alcatraz Federal Penitentiary"},{"number":13,"question":"What novel, in which Amy Denver helps a slave running away from Sweet Home, is named after the deceased child of Sethe and is by Toni Morrison?","answer":"Beloved"},{"number":14,"question":"Andesite and rhyolite are what type of rock that can be classified as intrusive or extrusive, and which forms from the cooling of magma or lava?","answer":"igneous rocks"},{"number":15,"question":"What opera, in which \"Der Hölle Rache\" is sung by the Queen of the Night, concerns Tamino's quest to rescue Pamina and is by Wolfgang Amadeus Mozart?","answer":"The Magic Flute, K. 620 (or Die Zauberflöte)"},{"number":16,"question":"What man, who was killed along with George Moscone by Dan White in 1978, was a member of the Board of Supervisors of San Francisco and was openly gay?","answer":"Harvey (Bernard) Milk"},{"number":17,"question":"What author, who wrote about Temple Drake in his novels Sanctuary and its sequel Requiem for a Nun, set many of his works in Yoknapatawpha County?","answer":"William (Cuthbert) Faulkner"},{"number":18,"question":"What instrument was played by the musician Bill Evans, bandleader Dave Brubeck, and the signature performer of \"Take the A Train,\" Duke Ellington?","answer":"piano (or pianoforte)"},{"number":19,"question":"What monosaccharide, which bonds with glucose to form sucrose, doesn't trigger insulin, has a low glycemic index, and is often called \"fruit sugar\"?","answer":"fructose (accept fruit sugar before \"fruit\")"},{"number":20,"question":"What film, in which the protagonist's DoD supervisor is revealed to be a hallucination, stars Russell Crowe as schizophrenic mathematician John Nash?","answer":"A Beautiful Mind"},{"number":21,"question":"What man, who was the Whig nominee in the 1852 presidential election, served in the Army for over 50 years and was called \"Old Fuss and Feathers\"?","answer":"Winfield Scott"},{"number":22,"question":"\"Demand-pull\" is one type of what phenomenon—measured by the CPI—which can be caused by printing money, and refers to an increase in prices over time?","answer":"inflation (accept demand-pull inflation)"},{"number":23,"question":"What compound produced along with carbon dioxide in hydrocarbon combustion is always found in hydrates, has a pH of 7, and is the \"universal solvent\"?","answer":"water or H2O"},{"number":24,"question":"In 73 BC people forced to engage in what profession escaped from a Capuan ludus, inciting the Third Servile War, under the leadership of Spartacus?","answer":"gladiators"},{"number":25,"question":"What state home to the region of Illawarra contains Botany Bay, entirely surrounds the Australian Capital Territory, and is home to Sydney?","answer":"New South Wales"},{"number":26,"question":"Pencil and paper ready. What is the total surface area of a cube whose edges each have a length of 4, given that a cube has 6 faces in all?","answer":"96"},{"number":27,"question":"What event, which claimed 146 lives and helped to spur the growth of a union called the ILGWU, was a 1911 fire in a New York City garment factory?","answer":"Triangle Shirtwaist Factory fire"},{"number":28,"question":"What poet described soldiers who \"die as cattle\" in \"Anthem for Doomed Youth,\" and wrote about a gas attack in the World War I poem \"Dulce et Decorum Est\"?","answer":"Wilfred Owen"},{"number":29,"question":"What body of water, bordered by the Lisan Peninsula and Mount Sodom, sits at the mouth of the Jordan River and is known for its high salinity?","answer":"Dead Sea or Salt Sea"},{"number":30,"question":"What man once derided as the \"Senator from MBNA,\" announced a \"moonshot\" after the death of his son Beau and was Barack Obama's Vice President?","answer":"Joe Biden (Jr.) (or Joseph Robinette Biden Jr.)"},{"number":31,"question":"What hero, who spent time in the court of Lycomedes disguised as a woman, avenges the death of his friend Patroclus by killing Hector in the Iliad?","answer":"Achilles (or Akhilleus)"},{"number":32,"question":"What novel describes the virtuous prostitute Sonya Marmeladova and Porfiry Petrovich's investigation of Raskolnikov's murder of a pawnbroker?","answer":"Crime and Punishment"},{"number":33,"question":"What number, which identifies a Beethoven piano sonata nicknamed \"The Tempest,\" also identifies the final mission of NASA's Apollo program?","answer":"17 (accept Piano Sonata No. 17 or Apollo 17)"},{"number":34,"question":"Infrared light was discovered by what German-English astronomer who first saw the moons Titania and Oberon, as well as the planet they orbit, Uranus?","answer":"(Frederick) William Herschel"},{"number":35,"question":"What man, who died while arranging a purge based on the \"Doctors' Plot,\" succeeded Vladimir Lenin and was the Soviet dictator during World War II?","answer":"Joseph Stalin"},{"number":36,"question":"What male actor won an Oscar for Terms of Endearment and played the murderous Jack Torrance in The Shining, in which he shouted \"Here's Johnny!\"?","answer":"Jack Nicholson"},{"number":37,"question":"An ice skater spins faster as they pull in their arms due to the conservation of what quantity equal to the moment of inertia times angular velocity?","answer":"angular momentum"},{"number":38,"question":"What country, whose Old Republic was dominated by \"coffee with milk\" politics, included fazenda plantations and produces a third of the world's coffee?","answer":"Brazil"},{"number":39,"question":"In what country did Pope Tawadros II barely escape a 2017 Palm Sunday assassination attempt by ISIS that targeted Coptic Christians in Alexandria?","answer":"Egypt"},{"number":40,"question":"What element, whose \"Raney\" form is a common catalyst, is purified in the Mond process, is found with iron in Earth's inner core, and is symbolized Ni?","answer":"nickel"}]},{"packet":3,"questions":[{"number":1,"question":"What man, who was defended in 1807 by Luther Martin when he was put on trial for treason, fought a duel in 1804 in which he killed Alexander Hamilton?","answer":"Aaron Burr"},{"number":2,"question":"What American scientist developed the conservation of charge and the lightning rod, the latter of which he tested by flying a kite in a thunderstorm?","answer":"Benjamin Franklin"},{"number":3,"question":"What city, which names a style of chili served over pasta, is known as the \"Queen City of the West\" and is in southwestern Ohio near Kentucky?","answer":"Cincinnati, Ohio"},{"number":4,"question":"What play, whose last act shows Emily watching her funeral from the afterlife, is set in the town of Grover's Corners and is by Thornton Wilder?","answer":"Our Town"},{"number":5,"question":"What sociologist, who studied bureaucracy and proposed an \"iron cage\" of modern society, wrote The Protestant Ethic and the Spirit of Capitalism?","answer":"Max Weber"},{"number":6,"question":"Diophantine equations' solutions must be in what set that is closed under subtraction but not division, and contains the naturals and their opposites?","answer":"integers (accept Z)"},{"number":7,"question":"What country's president declined to run for reelection due to failing health in 2017, resulting in Ram Nath Kovind taking over from Pranab Mukherjee?","answer":"India"},{"number":8,"question":"What Roman emperor, who co-reigned with his brother Lucius Verus, was the author of the Meditations and the last of the \"five good emperors\"?","answer":"Marcus Aurelius"},{"number":9,"question":"What law says that electric force is inversely proportional to the square of distance, and shares its name with the SI unit of electric charge?","answer":"Coulomb's law"},{"number":10,"question":"What story, which opens with the line \"One dollar and eighty-seven cents,\" describes how Della buys a Christmas gift for Jim, and is by O. Henry?","answer":"The Gift of the Magi"},{"number":11,"question":"What battle, whose losing side planned a defense in Operation Clausewitz, ended with Helmuth Weidling's surrender and Adolf Hitler's suicide?","answer":"Battle of Berlin"},{"number":12,"question":"What animal, a \"golden\" type of which titles an ancient novel by Apuleius, was the mount of Sancho Panza and mates with a horse to produce a mule?","answer":"donkeys (or ass; accept The Golden Ass)"},{"number":13,"question":"What novel, whose first sequel is titled Speaker for the Dead, depicts a boy who commands human forces against the Buggers and is by Orson Scott Card?","answer":"Ender's Game"},{"number":14,"question":"Fick's laws describe what process—of which osmosis is a special case—that involves molecules passively moving down a concentration gradient?","answer":"diffusion"},{"number":15,"question":"What river, which flows into the Tyrrhenian Sea near Ostia, rises in the Apennine Mountains in Italy before passing under the Milvian Bridge in Rome?","answer":"Tiber River (or Tevere)"},{"number":16,"question":"What painting shown in the background of Grant Wood's Daughters of Revolution is an Emanuel Leutze depiction of an event from the Revolutionary War?","answer":"Washington Crossing the Delaware"},{"number":17,"question":"What molecules, whose processing involves addition of a 5' cap and 3' poly(A) tail in eukaryotes, are transcribed by a polymerase that \"reads\" DNA?","answer":"mRNA(s) (or messenger RNA)"},{"number":18,"question":"What officer, who lost an arm in the Canary Islands, stated \"every man will do his duty\" before dying aboard HMS Victory at the Battle of Trafalgar?","answer":"(Lord) Horatio Nelson"},{"number":19,"question":"What composer of An American in Paris was commissioned by Paul Whiteman to write a jazz-influenced composition called Rhapsody in Blue?","answer":"George Gershwin"},{"number":20,"question":"What musical, in which a singer proves her talent in the song \"Think of Me,\" depicts a mysterious masked figure who lives under a Paris music house?","answer":"The Phantom of the Opera"},{"number":21,"question":"What man, who in 1878 was elected governor of New Jersey, was removed from command after failing to pursue a Confederate army following Antietam?","answer":"George (Brinton) McClellan"},{"number":22,"question":"What six-letter term, used in chemistry as a formal term for melting, also names the process in which two smaller nuclei join to form a larger one?","answer":"fusion"},{"number":23,"question":"\"Democracy dies in darkness\" is the new motto of what newspaper that investigated the 1970s allegations of Deep Throat and is now owned by Jeff Bezos?","answer":"The Washington Post"},{"number":24,"question":"What novel, in which Benjamin is unenthusiastic about a windmill whose construction was proposed by the pig Snowball, was written by George Orwell?","answer":"Animal Farm"},{"number":25,"question":"What country, which contains Port Harcourt and is found east of Benin, is the most populous country in Africa and has its capital at Abuja?","answer":"Nigeria"},{"number":26,"question":"What country's Charter 08 manifesto was co-written by the 2010 Nobel Peace Prize winner, who died in captivity in July 2017 and was named Liu Xiaobo?","answer":"China (or People's Republic of China or PRC)"},{"number":27,"question":"What novel, in which Remedios the Beauty floats into heaven out of the village of Macondo, is a chronicle of the Buendías by Gabriel García Márquez?","answer":"One Hundred Years of Solitude"},{"number":28,"question":"What 1848 event, which was planned by a group of Quakers including Lucretia Mott, was held in New York and was a pioneering women's rights convention?","answer":"Seneca Falls Convention"},{"number":29,"question":"Aibohphobia is the fear of what kind of words, which include \"racecar\" and which, like \"aibohphobia\" itself, are spelled the same forwards and backwards?","answer":"palindromes"},{"number":30,"question":"Malformed Reed-Sternberg cells are found in what type of cancer, caused by a namesake white blood cell, that has Hodgkin and non-Hodgkin forms?","answer":"lymphoma(s)"},{"number":31,"question":"What man, whose 1986 Masters win made him the oldest to ever win that event, was called the \"Golden Bear\" and holds the most major titles among golfers?","answer":"Jack (William) Nicklaus"},{"number":32,"question":"What explorer, who described his voyages in a letter to Lorenzo de Medici called Mundus Novus, is the namesake of the New World continents?","answer":"Amerigo Vespucci"},{"number":33,"question":"What city, which was the capital of the French colony of Cochinchina, used to be called Saigon and was renamed for a Vietnamese Communist leader?","answer":"Ho Chi Minh City"},{"number":34,"question":"What novel, whose protagonist helps fake Valentine's death by poison, tells of Edmond Dantès's extensive revenge and was written by Alexandre Dumas?","answer":"The Count of Monte Cristo"},{"number":35,"question":"What type of radiation has wavelengths between 10 and 400 nanometers—shorter than visible light but longer than X-rays—and can cause sunburns?","answer":"ultraviolet light (or UV light)"},{"number":36,"question":"Fred Archer developed the Zone System with what artist, who created Moonrise, Hernandez, New Mexico and other photographs of the American Southwest?","answer":"Ansel (Easton) Adams"},{"number":37,"question":"What rapper, who claimed to have \"Obama on the text\" in \"On to the Next One,\" released the album 4:44 in 2017 and recorded The Blueprint and \"99 Problems\"?","answer":"Jay Z (or Shawn Corey Carter)"},{"number":38,"question":"What leader, who conquered the Khwarezmid Empire in Persia, was born with the name Temüjin and, like his grandson Kublai, was a Mongol emperor?","answer":"Genghis Khan"},{"number":39,"question":"What character describes a dice game played by \"Life-in-Death,\" and tells a \"Wedding-Guest\" about shooting an albatross in a Samuel Taylor Coleridge \"Rime\"?","answer":"The Ancient Mariner"},{"number":40,"question":"Pencil and paper ready. What is the value of the constant c in the function f of x equals 2x plus c, given that f of 3 equals 13?","answer":"c = 7"}]}];
+
+// State
+let currentPacket = 0;
+let currentQuestion = 0;
+let readingTimer = null;
+let wordIndex = 0;
+let isBuzzed = false;
+let isRevealed = false;
+let words = [];
+let scoreCorrect = 0;
+let scoreWrong = 0;
+let history = [];
+let readSpeed = 200;
+let ttsEnabled = false;
+let ttsUtterance = null;
+let shuffledData = null;
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function getActiveData() {
+  return shuffledData || DATA;
+}
+
+// Init
+function init() {
+  // Merge all packets into one flat shuffled packet
+  const allQuestions = DATA.flatMap(p => p.questions);
+  shuffledData = [{ packet: 'Speed Check #56', questions: shuffle(allQuestions) }];
+
+  // Hide packet selector since there's only one
+  document.getElementById('packetSelectorGroup').style.display = 'none';
+
+  populateQuestionSelect();
+  loadQuestion();
+
+  document.getElementById('questionSelect').addEventListener('change', e => {
+    currentQuestion = parseInt(e.target.value);
+    loadQuestion();
+  });
+  document.getElementById('speedSlider').addEventListener('input', e => {
+    readSpeed = parseInt(e.target.value);
+    document.getElementById('speedVal').textContent = readSpeed + ' wpm';
+    if (readingTimer) restartReading();
+  });
+  document.getElementById('btnTTS').addEventListener('click', toggleTTS);
+  document.addEventListener('keydown', handleKey);
+}
+
+function populateQuestionSelect() {
+  const sel = document.getElementById('questionSelect');
+  sel.innerHTML = '';
+  const packet = getActiveData()[currentPacket];
+  packet.questions.forEach((q, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = `Q${i + 1}`;
+    sel.appendChild(opt);
+  });
+  sel.value = currentQuestion;
+}
+
+function loadQuestion() {
+  stopReading();
+  stopTTS();
+  isBuzzed = false;
+  isRevealed = false;
+  wordIndex = 0;
+
+  const packet = getActiveData()[currentPacket];
+  const q = packet.questions[currentQuestion];
+  words = q.question.split(' ');
+
+  document.getElementById('questionIdLabel').textContent = `Speed Check #56 · Q${currentQuestion + 1}`;
+  document.getElementById('questionNumLabel').textContent = `#${currentQuestion + 1}`;
+  document.getElementById('questionSelect').value = currentQuestion;
+
+  renderWords(0);
+  setStatus('ready');
+  hideAnswerPanel();
+  hideResult();
+  document.getElementById('btnBuzz').classList.remove('buzzed');
+  document.getElementById('btnBuzz').textContent = '⚡ BUZZ IN';
+
+  const progress = ((currentQuestion) / packet.questions.length) * 100;
+  document.getElementById('progressBar').style.width = progress + '%';
+}
+
+function renderWords(upTo) {
+  const body = document.getElementById('questionBody');
+  body.innerHTML = words.map((w, i) => {
+    if (i < upTo) return `<span class="word revealed">${w} </span>`;
+    if (i === upTo) return `<span class="word current">${w} </span>`;
+    return `<span class="word hidden">${w} </span>`;
+  }).join('');
+}
+
+function playQuestion() {
+  if (isBuzzed || isRevealed) return;
+  if (readingTimer) { stopReading(); stopTTS(); return; }
+  startReading();
+  if (ttsEnabled) speakQuestion();
+}
+
+function startReading() {
+  setStatus('reading');
+  document.getElementById('btnPlay').textContent = '⏸ Pause';
+  readNextWord();
+}
+
+function readNextWord() {
+  if (isBuzzed || isRevealed) return;
+  if (wordIndex >= words.length) {
+    stopReading();
+    setStatus('done');
+    document.getElementById('btnPlay').textContent = '▶ Play';
+    return;
+  }
+  renderWords(wordIndex);
+  wordIndex++;
+  const delay = (60 / readSpeed) * 1000;
+  readingTimer = setTimeout(readNextWord, delay);
+}
+
+function stopReading() {
+  if (readingTimer) { clearTimeout(readingTimer); readingTimer = null; }
+  document.getElementById('btnPlay').textContent = '▶ Play';
+}
+
+function restartReading() {
+  stopReading();
+  if (!isBuzzed && !isRevealed) startReading();
+}
+
+function buzzIn() {
+  if (isBuzzed || isRevealed) return;
+  stopReading();
+  stopTTS();
+  isBuzzed = true;
+  setStatus('buzzed');
+  document.getElementById('btnBuzz').classList.add('buzzed');
+  document.getElementById('btnBuzz').textContent = '⚡ BUZZED';
+  showAnswerPanel();
+  document.getElementById('answerInput').focus();
+}
+
+function submitAnswer() {
+  const input = document.getElementById('answerInput');
+  const userAnswer = input.value.trim();
+  if (!userAnswer) return;
+
+  const q = getActiveData()[currentPacket].questions[currentQuestion];
+  const isCorrect = checkAnswer(userAnswer, q.answer);
+  showResult(isCorrect, q.answer, userAnswer);
+  addHistory(isCorrect, q, currentQuestion);
+  if (isCorrect) scoreCorrect++; else scoreWrong++;
+  updateScore();
+  input.value = '';
+  hideAnswerPanel();
+}
+
+function checkAnswer(userAns, correctAns) {
+  const normalize = s => s.toLowerCase()
+    .replace(/\(.*?\)/g, '') // remove parentheticals
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const u = normalize(userAns);
+  const c = normalize(correctAns);
+
+  // Direct match
+  if (u === c) return true;
+
+  // Check if user answer is contained in correct or vice versa
+  if (c.includes(u) || u.includes(c)) return true;
+
+  // Check key words
+  const cWords = c.split(' ').filter(w => w.length > 3);
+  const uWords = u.split(' ').filter(w => w.length > 3);
+  const matches = uWords.filter(w => cWords.some(cw => cw.includes(w) || w.includes(cw)));
+  if (matches.length > 0 && matches.length >= Math.min(uWords.length, cWords.length) * 0.5) return true;
+
+  return false;
+}
+
+function revealAnswer() {
+  if (isRevealed) return;
+  stopReading();
+  isRevealed = true;
+  setStatus('done');
+  renderWords(words.length);
+  const q = getActiveData()[currentPacket].questions[currentQuestion];
+  showResult(null, q.answer, null);
+}
+
+function showAnswerPanel() {
+  document.getElementById('answerPanel').classList.add('visible');
+}
+
+function hideAnswerPanel() {
+  document.getElementById('answerPanel').classList.remove('visible');
+}
+
+function showResult(isCorrect, answer, userAnswer) {
+  const panel = document.getElementById('resultPanel');
+  const inner = document.getElementById('resultInner');
+  const badge = document.getElementById('resultBadge');
+  const answerText = document.getElementById('resultAnswerText');
+  const yourAnswer = document.getElementById('resultYourAnswer');
+
+  panel.classList.add('visible');
+  answerText.textContent = answer;
+
+  if (isCorrect === null) {
+    // Just reveal
+    inner.className = 'result-inner';
+    inner.style.background = 'rgba(0,210,255,0.08)';
+    inner.style.borderColor = 'rgba(0,210,255,0.3)';
+    badge.style.color = 'var(--accent3)';
+    badge.textContent = 'ANSWER';
+    yourAnswer.textContent = '';
+  } else if (isCorrect) {
+    inner.className = 'result-inner correct';
+    inner.style.background = '';
+    inner.style.borderColor = '';
+    badge.style.color = '';
+    badge.textContent = '✓ CORRECT!';
+    yourAnswer.textContent = `You said: "${userAnswer}"`;
+  } else {
+    inner.className = 'result-inner wrong';
+    inner.style.background = '';
+    inner.style.borderColor = '';
+    badge.style.color = '';
+    badge.textContent = '✗ INCORRECT';
+    yourAnswer.textContent = `You said: "${userAnswer}"`;
+  }
+}
+
+function hideResult() {
+  document.getElementById('resultPanel').classList.remove('visible');
+}
+
+function setStatus(status) {
+  const dot = document.getElementById('statusDot');
+  const text = document.getElementById('statusText');
+  dot.className = 'dot';
+  const map = {
+    ready: ['', 'Ready'],
+    reading: ['reading', 'Reading...'],
+    buzzed: ['buzzed', 'BUZZED — Type your answer'],
+    done: ['done', 'Question Complete']
+  };
+  const [cls, txt] = map[status] || ['', 'Ready'];
+  if (cls) dot.classList.add(cls);
+  text.textContent = txt;
+}
+
+function updateScore() {
+  document.getElementById('scoreCorrect').textContent = scoreCorrect;
+  document.getElementById('scoreWrong').textContent = scoreWrong;
+  const total = scoreCorrect + scoreWrong;
+  document.getElementById('scorePct').textContent = total ? Math.round((scoreCorrect / total) * 100) + '%' : '—';
+}
+
+function addHistory(isCorrect, q, qIndex) {
+  history.unshift({ isCorrect, q, qIndex, packet: getActiveData()[currentPacket].packet });
+  renderHistory();
+}
+
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  if (history.length === 0) {
+    list.innerHTML = '<div class="empty-history">No results yet</div>';
+    return;
+  }
+  list.innerHTML = history.slice(0, 20).map(h => `
+    <div class="history-item">
+      <span class="history-qid">SC56·Q${h.qIndex + 1}</span>
+      <span class="history-q">${h.q.question.substring(0, 60)}...</span>
+      <span class="history-result ${h.isCorrect ? 'c' : 'w'}">${h.isCorrect ? '✓' : '✗'}</span>
+    </div>
+  `).join('');
+}
+
+function clearHistory() {
+  history = [];
+  renderHistory();
+}
+
+function prevQuestion() {
+  if (currentQuestion > 0) {
+    currentQuestion--;
+    document.getElementById('questionSelect').value = currentQuestion;
+    loadQuestion();
+  } else if (currentPacket > 0) {
+    currentPacket--;
+    document.getElementById('packetSelect').value = currentPacket;
+    currentQuestion = getActiveData()[currentPacket].questions.length - 1;
+    populateQuestionSelect();
+    loadQuestion();
+  }
+}
+
+function nextQuestion() {
+  const packet = getActiveData()[currentPacket];
+  if (currentQuestion < packet.questions.length - 1) {
+    currentQuestion++;
+    document.getElementById('questionSelect').value = currentQuestion;
+    loadQuestion();
+  } else if (currentPacket < getActiveData().length - 1) {
+    currentPacket++;
+    document.getElementById('packetSelect').value = currentPacket;
+    currentQuestion = 0;
+    populateQuestionSelect();
+    loadQuestion();
+  }
+}
+
+function toggleTTS() {
+  ttsEnabled = !ttsEnabled;
+  const btn = document.getElementById('btnTTS');
+  if (ttsEnabled) {
+    btn.textContent = '🔊 TTS ON';
+    btn.style.borderColor = 'rgba(192,0,26,0.5)';
+    btn.style.color = 'var(--accent)';
+  } else {
+    btn.textContent = '🔇 TTS OFF';
+    btn.style.borderColor = '';
+    btn.style.color = '';
+    stopTTS();
+  }
+}
+
+function stopTTS() {
+  if (window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+  }
+  ttsUtterance = null;
+}
+
+function speakQuestion() {
+  if (!ttsEnabled || !window.speechSynthesis) return;
+  stopTTS();
+  const q = getActiveData()[currentPacket].questions[currentQuestion];
+  ttsUtterance = new SpeechSynthesisUtterance(q.question);
+  ttsUtterance.rate = readSpeed / 160; // map wpm to speech rate
+  ttsUtterance.pitch = 1;
+  ttsUtterance.volume = 1;
+  window.speechSynthesis.speak(ttsUtterance);
+}
+
+function handleKey(e) {
+  const inputFocused = document.activeElement === document.getElementById('answerInput');
+  if (inputFocused) {
+    if (e.key === 'Enter') { e.preventDefault(); submitAnswer(); }
+    return;
+  }
+  switch(e.key) {
+    case ' ':
+      e.preventDefault();
+      if (!isBuzzed && !isRevealed) buzzIn();
+      break;
+    case 'Enter':
+      e.preventDefault();
+      if (!readingTimer && !isBuzzed && !isRevealed) {
+        playQuestion();
+        if (ttsEnabled) speakQuestion();
+      }
+      break;
+    case 'ArrowRight':
+      e.preventDefault();
+      nextQuestion();
+      break;
+    case 'ArrowDown':
+      e.preventDefault();
+      // Move to next question and immediately start playing
+      nextQuestion();
+      setTimeout(() => {
+        playQuestion();
+        if (ttsEnabled) speakQuestion();
+      }, 50);
+      break;
+    case 'ArrowLeft':
+      e.preventDefault();
+      prevQuestion();
+      break;
+    case 'r': case 'R':
+      loadQuestion();
+      break;
+    case 't': case 'T':
+      toggleTTS();
+      break;
+  }
+}
+
+init();
+</script>
+</body>
+</html>
