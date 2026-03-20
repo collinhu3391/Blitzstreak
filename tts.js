@@ -157,10 +157,14 @@ function speakQuestion() {
 //   Multiplayer:     onTTSQuestionLoad(receivedQuestion.text)
 function onTTSQuestionLoad(text) {
   if (!ttsEnabled || !text) return;
-  // Small delay so the DOM can paint the question before speech starts
-  setTimeout(() => speakText(text), 120);
+  // Safari needs no delay, Chrome sometimes needs one
+  const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
+  if (isChrome) {
+    setTimeout(() => speakText(text), 120);
+  } else {
+    speakText(text);
+  }
 }
-
 // ── Toggle button ─────────────────────────────────────────────
 // Bound to #btnTTS in the HTML. Updates button style on toggle.
 function toggleTTS() {
