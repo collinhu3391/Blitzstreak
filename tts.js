@@ -104,7 +104,9 @@ function speakText(text) {
     u.onend   = () => _stopTTSPing();
     u.onerror = () => _stopTTSPing();
 
-    window.speechSynthesis.speak(u);
+    // Chrome on Mac fix — cancel first, then speak after short delay
+    window.speechSynthesis.cancel();
+    setTimeout(() => window.speechSynthesis.speak(u), 100);
   };
 
   if (window.speechSynthesis.getVoices().length) {
