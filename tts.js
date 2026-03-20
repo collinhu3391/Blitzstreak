@@ -76,10 +76,14 @@ function _stopTTSPing() {
 // This is the single entry point for all speech. Both single
 // player and multiplayer flow through here.
 function speakText(text) {
-  if (!ttsEnabled || !window.speechSynthesis || !text) return;
-
-  stopTTS();
-
+  if (!ttsEnabled || !text) return;
+  responsiveVoice.cancel();
+  responsiveVoice.speak(text, "US English Female", {
+    rate: Math.min(1.8, Math.max(0.5, (typeof readSpeed !== 'undefined' ? readSpeed : 160) / 160))
+  });
+function stopTTS() {
+  if (typeof responsiveVoice !== 'undefined') responsiveVoice.cancel();
+}
   const doSpeak = () => {
     const u = new SpeechSynthesisUtterance(text);
 
